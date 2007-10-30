@@ -191,6 +191,7 @@
             // 
             // stopWorkToolStripMenuItem
             // 
+            this.stopWorkToolStripMenuItem.Enabled = false;
             this.stopWorkToolStripMenuItem.Name = "stopWorkToolStripMenuItem";
             this.stopWorkToolStripMenuItem.Size = new System.Drawing.Size(160, 22);
             this.stopWorkToolStripMenuItem.Text = "&Stop Work";

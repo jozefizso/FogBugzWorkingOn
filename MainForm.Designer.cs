@@ -188,6 +188,7 @@
             this.tbManualCase.Size = new System.Drawing.Size(100, 23);
             this.tbManualCase.Text = "Case #";
             this.tbManualCase.Enter += new System.EventHandler(this.tbManualCase_Enter);
+            this.tbManualCase.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.tbManualCase_KeyPress);
             this.tbManualCase.Click += new System.EventHandler(this.tbManualCase_Enter);
             // 
             // stopWorkToolStripMenuItem

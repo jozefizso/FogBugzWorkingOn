@@ -24,5 +24,6 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         public DateTime ResolvedOn { get; set; }
         public Int32 ResolvedBy { get; set; }
         public Int32 ProjectId { get; set; }
+        public Int32 Priority { get; set; }
     }
 }

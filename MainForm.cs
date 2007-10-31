@@ -167,7 +167,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             if (IsLoggedIn)
             {
-                XDocument doc = XDocument.Load(GetCommandUrlWithToken(String.Format("cmd=search&q=assignedto:%22{0}%22%20status:active&cols=sTitle,ixProject,sFixFor,sProject,dtFixFor", System.Web.HttpUtility.UrlEncode(Settings.Default.Name).Replace("+", "%20"))));
+                XDocument doc = XDocument.Load(GetCommandUrlWithToken(String.Format("cmd=search&q=assignedto:%22{0}%22%20status:active&cols=sTitle,ixProject,sFixFor,sProject,dtFixFor,ixPriority", System.Web.HttpUtility.UrlEncode(Settings.Default.Name).Replace("+", "%20"))));
                 FogBugzApiError error;
                 if (doc.IsFogBugzError(out error)) error.Show(this);
                 else
@@ -204,7 +204,8 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                             Project = c.Element("sProject").Value,
                             ProjectId = Int32.Parse(c.Element("ixProject").Value),
                             FixFor = c.Element("sFixFor").Value,
-                            FixForDateString = c.Element("dtFixFor").Value
+                            FixForDateString = c.Element("dtFixFor").Value,
+                            Priority = Int32.Parse(c.Element("ixPriority").Value)
                         }));
 
                     // Get the 10 most recently submitted cases.
@@ -218,7 +219,8 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                             Project = c.Element("sProject").Value,
                             ProjectId = Int32.Parse(c.Element("ixProject").Value),
                             FixFor = c.Element("sFixFor").Value,
-                            FixForDateString = c.Element("dtFixFor").Value
+                            FixForDateString = c.Element("dtFixFor").Value,
+                            Priority = Int32.Parse(c.Element("ixPriority").Value)
                         }
                         ).Take(10));
                 }
@@ -539,7 +541,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                         projectMenu.DropDownItems.Add(fixForMenu);
 
                         // Create a menu item for each case in the "Fix For".
-                        foreach (FogBugzCase cs in cases.Where(c => c.Project == p.Key && c.FixFor == f.Key).OrderByDescending<FogBugzCase, Int32>(c => c.Id).Distinct<FogBugzCase>().Take(10))
+                        foreach (FogBugzCase cs in cases.Where(c => c.Project == p.Key && c.FixFor == f.Key).OrderBy<FogBugzCase, Int32>(c => c.Priority).ThenByDescending<FogBugzCase, Int32>(c => c.Id).Distinct<FogBugzCase>().Take(10))
                         {
                             Boolean isSelected = workingCase == null ? false : workingCase.Id == cs.Id;
                             AddMenuItem(fixForMenu, cs.Id, String.Format("{0} - {1}", cs.Id, cs.Title), Case_Click, isSelected);

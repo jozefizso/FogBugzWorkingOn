@@ -13,8 +13,9 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
 {
     public partial class MainForm : Form
     {
-        private Case workingCase;
-        private Dictionary<Int32, String> projects = new Dictionary<Int32, String>();        
+        private FogBugzCase workingCase;
+        private List<FogBugzCase> cases;
+        private List<FogBugzCase> caseHistory;
 
         public MainForm()
         {
@@ -35,9 +36,6 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             if (tbServer.Text != "" && tbUser.Text != "" && tbPassword.Text != "")
             {
                 Logon();
-                UpdateProjects();
-                UpdateWorkingCase();
-                UpdateCases();
             }
         }
                 
@@ -64,6 +62,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 tray.ShowBalloonTip(0, String.Format("Logged into {0}", Settings.Default.Server), "Now get crackin!", ToolTipIcon.Info);                
                 updateTimer.Start();
                 UpdateName();
+                UpdateFogBugzData();
             }
         }
 
@@ -95,22 +94,28 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 }
             }
         }
-        
+
         /// <summary>
-        /// Updates the internal project dictionary.
+        /// Updates an internal list of cases that the user has resolved in the past week,
+        /// which assists in determining which cases are displayed in the menu.
         /// </summary>
-        private void UpdateProjects()
+        private void UpdateCaseHistory()
         {
             if (IsLoggedIn)
             {
-                XDocument doc = XDocument.Load(GetCommandUrlWithToken("cmd=listProjects"));
+                String command = String.Format("cmd=search&q=resolvedby:\"{0}\" resolved:\"{1}-{2}\"&cols=ixProject,sFixFor", Settings.Default.Name, DateTime.Now.AddDays(-7).ToShortDateString(), DateTime.Now.ToShortDateString());
+                XDocument doc = XDocument.Load(GetCommandUrlWithToken(command));
                 FogBugzApiError error;
-                if (doc.IsFogBugzError(out error)) error.Show(this);
+                if(doc.IsFogBugzError(out error)) error.Show(this);
                 else
                 {
-                    projects = projects.FromKeyValuePairCollection<Int32, String>((
-                        from p in doc.Descendants("project")
-                        select new KeyValuePair<Int32, String>(Int32.Parse(p.Element("ixProject").Value), p.Element("sProject").Value)));
+                    caseHistory = new List<FogBugzCase>((
+                        from c in doc.Descendants("case")
+                        select new FogBugzCase
+                        {
+                            ProjectId = Int32.Parse(c.Element("ixProject").Value),
+                            FixFor = c.Element("sFixFor").Value
+                        }));                
                 }
             }
         }
@@ -127,10 +132,10 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 if (doc.IsFogBugzError(out error)) error.Show(this);
                 else
                 {
-                    IEnumerable<Case> cases = (
+                    IEnumerable<FogBugzCase> cases = (
                         from c in doc.Descendants("interval")
                         where c.Element("dtEnd").Value == ""
-                        select new Case
+                        select new FogBugzCase
                             {
                                 Id = Int32.Parse(c.Element("ixBug").Value),
                                 Title = c.Element("sTitle").Value
@@ -156,61 +161,66 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         }
 
         /// <summary>
-        /// Updates the menu's lists of cases.
+        /// Updates an internal list of cases the user is likely to be working on.
         /// </summary>
         private void UpdateCases()
         {
             if (IsLoggedIn)
             {
-                XDocument doc = XDocument.Load(GetCommandUrlWithToken(String.Format("cmd=search&q=assignedto:%22{0}%22%20status:active&cols=sTitle,ixProject,sFixFor", System.Web.HttpUtility.UrlEncode(Settings.Default.Name).Replace("+", "%20"))));
+                XDocument doc = XDocument.Load(GetCommandUrlWithToken(String.Format("cmd=search&q=assignedto:%22{0}%22%20status:active&cols=sTitle,ixProject,sFixFor,sProject,dtFixFor", System.Web.HttpUtility.UrlEncode(Settings.Default.Name).Replace("+", "%20"))));
                 FogBugzApiError error;
                 if (doc.IsFogBugzError(out error)) error.Show(this);
                 else
                 {
-                    IEnumerable<Case> cases = (
+                    // Get a list of recent project ids
+                    List<Int32> recentProjects = new List<Int32>((
+                        from p in caseHistory.GroupBy<FogBugzCase, Int32>(p => p.ProjectId)
+                        select p.Key));
+
+                    // Get a list of recent Fix Fors
+                    List<FogBugzFixFor> recentFixFors = new List<FogBugzFixFor>();
+                    foreach (Int32 projectId in recentProjects)
+                    {
+                        recentFixFors.AddRange((
+                            from f in caseHistory.Where<FogBugzCase>(f => f.ProjectId == projectId).GroupBy<FogBugzCase, String>(f => f.FixFor)
+                            select new FogBugzFixFor
+                            {
+                                ProjectId = projectId,
+                                Name = f.Key
+                            }));
+                    }
+
+
+                    cases = new List<FogBugzCase>();
+                    // Get cases based on recent case resolution actions.
+                    cases.AddRange((
                         from c in doc.Descendants("case")
-                        orderby Int32.Parse(c.Attribute("ixBug").Value) descending
-                        select new Case
+                        where recentProjects.Contains(Int32.Parse(c.Element("ixProject").Value))
+                            && recentFixFors.Where<FogBugzFixFor>(f => f.ProjectId == Int32.Parse(c.Element("ixProject").Value)).Where<FogBugzFixFor>(f => f.Name == c.Element("sFixFor").Value).Count() > 0
+                        select new FogBugzCase
                         {
                             Id = Int32.Parse(c.Attribute("ixBug").Value),
                             Title = c.Element("sTitle").Value,
-                            Project = projects[Int32.Parse(c.Element("ixProject").Value)],
-                            FixFor = c.Element("sFixFor").Value
-                        }
-                        ).Take(10);
+                            Project = c.Element("sProject").Value,
+                            ProjectId = Int32.Parse(c.Element("ixProject").Value),
+                            FixFor = c.Element("sFixFor").Value,
+                            FixForDateString = c.Element("dtFixFor").Value
+                        }));
 
-                    // Update the "Cases" menu.
-                    casesToolStripMenuItem.DropDownItems.Clear();
-                    foreach (Case cs in cases)
-                    {
-                        Boolean isSelected = workingCase == null ? false : workingCase.Id == cs.Id;
-                        AddMenuItem(casesToolStripMenuItem, cs.Id, String.Format("{0} - {1}", cs.Id, cs.Title), Case_Click, isSelected);
-                    }
-
-                    // Update the "Projects" menu.
-                    projectsToolStripMenuItem.DropDownItems.Clear();
-                    // Create a menu item for each project.
-                    foreach (IGrouping<String, Case> p in cases.GroupBy(c => c.Project))
-                    {
-                        ToolStripMenuItem projectMenu = new ToolStripMenuItem();
-                        projectMenu.Text = p.Key;
-                        projectsToolStripMenuItem.DropDownItems.Add(projectMenu);
-
-                        // Create a menu item for each "Fix For" with the project.
-                        foreach (IGrouping<String, Case> f in cases.Where(c => c.Project == p.Key).GroupBy(c => c.FixFor))
+                    // Get the 10 most recently submitted cases.
+                    cases.AddRange((
+                        from c in doc.Descendants("case")
+                        orderby Int32.Parse(c.Attribute("ixBug").Value) descending
+                        select new FogBugzCase
                         {
-                            ToolStripMenuItem fixForMenu = new ToolStripMenuItem();
-                            fixForMenu.Text = f.Key;
-                            projectMenu.DropDownItems.Add(fixForMenu);
-
-                            // Create a menu item for each case in the "Fix For".
-                            foreach (Case cs in cases.Where(c => c.Project == p.Key && c.FixFor == f.Key))
-                            {
-                                Boolean isSelected = workingCase == null ? false : workingCase.Id == cs.Id;
-                                AddMenuItem(fixForMenu, cs.Id, String.Format("{0} - {1}", cs.Id, cs.Title), Case_Click, isSelected);
-                            }
+                            Id = Int32.Parse(c.Attribute("ixBug").Value),
+                            Title = c.Element("sTitle").Value,
+                            Project = c.Element("sProject").Value,
+                            ProjectId = Int32.Parse(c.Element("ixProject").Value),
+                            FixFor = c.Element("sFixFor").Value,
+                            FixForDateString = c.Element("dtFixFor").Value
                         }
-                    }
+                        ).Take(10));
                 }
             }
         }
@@ -232,8 +242,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 }
                 else
                 {
-                    UpdateWorkingCase();
-                    UpdateCases();
+                    UpdateFogBugzData();
                     tray.ShowBalloonTip(0, String.Format("Work started on Case {0}", caseId), workingCase.Title, ToolTipIcon.Info);
                     return true;
                 }
@@ -273,8 +282,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 else
                 {
                     tray.ShowBalloonTip(0, title, text, ToolTipIcon.Info);
-                    UpdateWorkingCase();
-                    UpdateCases();
+                    UpdateFogBugzData();
                 }
             }
         }
@@ -307,9 +315,6 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         private void btnOk_Click(object sender, EventArgs e)
         {
             Logon();
-            UpdateProjects();
-            UpdateWorkingCase();
-            UpdateCases();
         }
 
         /// <summary>
@@ -356,9 +361,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         /// </summary>
         private void updateTimer_Tick(object sender, EventArgs e)
         {
-            UpdateProjects();
-            UpdateWorkingCase();
-            UpdateCases();
+            UpdateFogBugzData();
         }
 
         /// <summary>
@@ -424,11 +427,13 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             menu.Focus();
         }
 
+        /// <summary>
+        /// Handles the click event of the refresh menu item, which updates
+        /// all the case data.
+        /// </summary>
         private void refreshToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            UpdateProjects();
-            UpdateWorkingCase();
-            UpdateCases();
+            UpdateFogBugzData();
         }
 
         #endregion
@@ -490,31 +495,61 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             get { return !String.IsNullOrEmpty(Settings.Default.Token); }
         }
 
+        /// <summary>
+        /// Calls all methods that update case and case-related data.
+        /// </summary>
+        private void UpdateFogBugzData()
+        {
+            UpdateCaseHistory();
+            UpdateWorkingCase();
+            UpdateMenu();
+        }
+
+        /// <summary>
+        /// Forces an update of case data and updates the menu's lists of cases.
+        /// </summary>
+        private void UpdateMenu()
+        {
+            if (IsLoggedIn)
+            {
+                UpdateCases();
+
+                // Update the "Cases" menu.
+                casesToolStripMenuItem.DropDownItems.Clear();
+                foreach (FogBugzCase cs in cases.OrderByDescending<FogBugzCase, Int32>(c => c.Id).Take(10))
+                {
+                    Boolean isSelected = workingCase == null ? false : workingCase.Id == cs.Id;
+                    AddMenuItem(casesToolStripMenuItem, cs.Id, String.Format("{0} - {1}", cs.Id, cs.Title), Case_Click, isSelected);
+                }
+
+                // Update the "Projects" menu.
+                projectsToolStripMenuItem.DropDownItems.Clear();
+                // Create a menu item for each project.
+                foreach (IGrouping<String, FogBugzCase> p in cases.GroupBy(c => c.Project))
+                {
+                    ToolStripMenuItem projectMenu = new ToolStripMenuItem();
+                    projectMenu.Text = p.Key;
+                    projectsToolStripMenuItem.DropDownItems.Add(projectMenu);
+
+                    // Create a menu item for each "Fix For" with the project.
+                    foreach (IGrouping<String, FogBugzCase> f in cases.Where(c => c.Project == p.Key).OrderBy<FogBugzCase, DateTime>(c => c.FixForDate).GroupBy(c => c.FixFor))
+                    {
+                        ToolStripMenuItem fixForMenu = new ToolStripMenuItem();
+                        fixForMenu.Text = f.Key;
+                        projectMenu.DropDownItems.Add(fixForMenu);
+
+                        // Create a menu item for each case in the "Fix For".
+                        foreach (FogBugzCase cs in cases.Where(c => c.Project == p.Key && c.FixFor == f.Key).OrderByDescending<FogBugzCase, Int32>(c => c.Id).Distinct<FogBugzCase>().Take(10))
+                        {
+                            Boolean isSelected = workingCase == null ? false : workingCase.Id == cs.Id;
+                            AddMenuItem(fixForMenu, cs.Id, String.Format("{0} - {1}", cs.Id, cs.Title), Case_Click, isSelected);
+                        }
+                    }
+                }
+            }
+        }
+
         #endregion
 
-    }
-
-    /// <summary>
-    /// A container class for a FogBugz case.
-    /// </summary>
-    public class Case
-    {
-        public Int32 Id { get; set; }
-        public String Title { get; set; }
-        public String FixFor { get; set; }
-        public String Project { get; set; }
-    }
-
-    /// <summary>
-    /// A container class for FogBugz API errors.
-    /// </summary>
-    public class FogBugzApiError
-    {
-        public Int32 Code { get; set; }
-        public String Message { get; set; }        
-        public void Show(IWin32Window owner)
-        {
-            MessageBox.Show(owner, Message, String.Format("FogBugz API Error Code {0}", Code), MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
     }
 }

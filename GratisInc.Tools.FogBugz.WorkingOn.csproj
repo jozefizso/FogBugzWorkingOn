@@ -48,6 +48,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Extensions.cs" />
+    <Compile Include="FogBugzApiError.cs" />
+    <Compile Include="FogBugzCase.cs" />
+    <Compile Include="FogBugzFixFor.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

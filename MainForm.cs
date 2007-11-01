@@ -59,7 +59,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 Settings.Default.Save();
 
                 HideForm();
-                tray.ShowBalloonTip(0, String.Format("Logged into {0}", Settings.Default.Server), "Now get crackin!", ToolTipIcon.Info);                
+                tray.ShowBalloonTip(0, String.Format("Logged into {0}", Settings.Default.Server), "Now get crackin!", ToolTipIcon.Info);
                 updateTimer.Start();
                 UpdateName();
                 UpdateFogBugzData();
@@ -192,22 +192,6 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
 
 
                     cases = new List<FogBugzCase>();
-                    // Get cases based on recent case resolution actions.
-                    cases.AddRange((
-                        from c in doc.Descendants("case")
-                        where recentProjects.Contains(Int32.Parse(c.Element("ixProject").Value))
-                            && recentFixFors.Where<FogBugzFixFor>(f => f.ProjectId == Int32.Parse(c.Element("ixProject").Value)).Where<FogBugzFixFor>(f => f.Name == c.Element("sFixFor").Value).Count() > 0
-                        select new FogBugzCase
-                        {
-                            Id = Int32.Parse(c.Attribute("ixBug").Value),
-                            Title = c.Element("sTitle").Value,
-                            Project = c.Element("sProject").Value,
-                            ProjectId = Int32.Parse(c.Element("ixProject").Value),
-                            FixFor = c.Element("sFixFor").Value,
-                            FixForDateString = c.Element("dtFixFor").Value,
-                            Priority = Int32.Parse(c.Element("ixPriority").Value)
-                        }));
-
                     // Get the 10 most recently submitted cases.
                     cases.AddRange((
                         from c in doc.Descendants("case")
@@ -223,6 +207,23 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                             Priority = Int32.Parse(c.Element("ixPriority").Value)
                         }
                         ).Take(10));
+
+                    // Get cases based on recent case resolution actions.
+                    cases.AddRange((
+                        from c in doc.Descendants("case")
+                        where recentProjects.Contains(Int32.Parse(c.Element("ixProject").Value))
+                            && recentFixFors.Where<FogBugzFixFor>(f => f.ProjectId == Int32.Parse(c.Element("ixProject").Value)).Where<FogBugzFixFor>(f => f.Name == c.Element("sFixFor").Value).Count() > 0
+                            && cases.Where<FogBugzCase>(ec => ec.Id == Int32.Parse(c.Attribute("ixBug").Value)).Count() == 0
+                        select new FogBugzCase
+                        {
+                            Id = Int32.Parse(c.Attribute("ixBug").Value),
+                            Title = c.Element("sTitle").Value,
+                            Project = c.Element("sProject").Value,
+                            ProjectId = Int32.Parse(c.Element("ixProject").Value),
+                            FixFor = c.Element("sFixFor").Value,
+                            FixForDateString = c.Element("dtFixFor").Value,
+                            Priority = Int32.Parse(c.Element("ixPriority").Value)
+                        }));
                 }
             }
         }

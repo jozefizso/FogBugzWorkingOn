@@ -113,6 +113,7 @@
             this.tray.Icon = ((System.Drawing.Icon)(resources.GetObject("tray.Icon")));
             this.tray.Text = "FogBugz";
             this.tray.Visible = true;
+            this.tray.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.tray_MouseDoubleClick);
             // 
             // menu
             // 
@@ -128,7 +129,7 @@
             this.tbManualCase,
             this.stopWorkToolStripMenuItem});
             this.menu.Name = "menu";
-            this.menu.Size = new System.Drawing.Size(161, 201);
+            this.menu.Size = new System.Drawing.Size(161, 179);
             this.menu.Click += new System.EventHandler(this.menu_Click);
             // 
             // logInToolStripMenuItem

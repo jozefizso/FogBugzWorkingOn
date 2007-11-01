@@ -453,6 +453,21 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             UpdateFogBugzData();
         }
 
+        /// <summary>
+        /// Handles the doubleclick event of the system tray icon, which
+        /// opens the FogBugz server url in the user's browser.
+        /// </summary>
+        private void tray_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            if (!String.IsNullOrEmpty(Settings.Default.Server))
+            {
+                System.Diagnostics.Process proc = new System.Diagnostics.Process();
+                proc.StartInfo.FileName = String.Format("http://{0}/", Settings.Default.Server);
+                proc.Start();
+                proc.Dispose();                
+            }
+        }
+
         #endregion
 
         #region [ Utility Methods ]

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Xml;
@@ -48,22 +49,27 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         private void Logon()
         {
             XDocument doc = XDocument.Load(String.Format("http://{0}/api.asp?cmd=logon&email={1}&password={2}", tbServer.Text, tbUser.Text, tbPassword.Text));
-            FogBugzApiError error;
-            if (doc.IsFogBugzError(out error)) error.Show(this);
-            else if (doc.Descendants("token").Count<XElement>() == 1)
+            XDocumentDescendantsResult result;
+            if (doc.TryGetDescendants("token", out result))
             {
-                Settings.Default.Server = tbServer.Text;
-                Settings.Default.User = tbUser.Text;
-                Settings.Default.Password = tbPassword.Text;
-                Settings.Default.Token = doc.Descendants("token").First<XElement>().Value;
-                Settings.Default.Save();
+                if (result.Descendants.Count() == 1)
+                {
+                    Settings.Default.Server = tbServer.Text;
+                    Settings.Default.User = tbUser.Text;
+                    Settings.Default.Password = tbPassword.Text;
+                    Settings.Default.Token = result.Descendants.First<XElement>().Value;
+                    Settings.Default.Save();
 
-                HideForm();
-                tray.ShowBalloonTip(0, String.Format("Logged into {0}", Settings.Default.Server), "Now get crackin!", ToolTipIcon.Info);
-                updateTimer.Start();
-                UpdateName();
-                UpdateFogBugzData();
+                    HideForm();
+                    tray.ShowBalloonTip(0, String.Format("Logged into {0}", Settings.Default.Server), "Now get crackin!", ToolTipIcon.Info);
+                    updateTimer.Start();
+                    UpdateName();
+                    UpdateFogBugzData();
+                }
             }
+            else if (result.IsFogBugzError) result.FogBugzError.Show(this);
+            else if (result.IsWebException) result.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
+            else if (result.IsException) result.ShowException(this, "An error occurred");
         }
 
         /// <summary>
@@ -74,12 +80,11 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             if (IsLoggedIn)
             {
                 XDocument doc = XDocument.Load(GetCommandUrlWithToken("cmd=viewPerson"));
-                FogBugzApiError error;
-                if (doc.IsFogBugzError(out error)) error.Show(this);
-                else
+                XDocumentDescendantsResult result;
+                if (doc.TryGetDescendants("person", out result))
                 {
                     IEnumerable<String> results = (
-                        from p in doc.Descendants("person")
+                        from p in result.Descendants
                         select p.Element("sFullName").Value);
                     if (results.Count() == 1)
                     {
@@ -92,6 +97,9 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                         Application.Exit();
                     }
                 }
+            else if (result.IsFogBugzError) result.FogBugzError.Show(this);
+            else if (result.IsWebException) result.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
+            else if (result.IsException) result.ShowException(this, "An error occurred");
             }
         }
 
@@ -105,18 +113,20 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             {
                 String command = String.Format("cmd=search&q=resolvedby:\"{0}\" resolved:\"{1}-{2}\"&cols=ixProject,sFixFor", Settings.Default.Name, DateTime.Now.AddDays(-7).ToShortDateString(), DateTime.Now.ToShortDateString());
                 XDocument doc = XDocument.Load(GetCommandUrlWithToken(command));
-                FogBugzApiError error;
-                if(doc.IsFogBugzError(out error)) error.Show(this);
-                else
+                XDocumentDescendantsResult result;
+                if (doc.TryGetDescendants("case", out result))
                 {
                     caseHistory = new List<FogBugzCase>((
-                        from c in doc.Descendants("case")
+                        from c in result.Descendants
                         select new FogBugzCase
                         {
                             ProjectId = Int32.Parse(c.Element("ixProject").Value),
                             FixFor = c.Element("sFixFor").Value
-                        }));                
+                        }));
                 }
+                else if (result.IsFogBugzError) result.FogBugzError.Show(this);
+                else if (result.IsWebException) result.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
+                else if (result.IsException) result.ShowException(this, "An error occurred");
             }
         }
 
@@ -128,12 +138,11 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             if (IsLoggedIn)
             {
                 XDocument doc = XDocument.Load(GetCommandUrlWithToken("cmd=listIntervals"));
-                FogBugzApiError error;
-                if (doc.IsFogBugzError(out error)) error.Show(this);
-                else
+                XDocumentDescendantsResult result;
+                if (doc.TryGetDescendants("interval", out result))
                 {
                     IEnumerable<FogBugzCase> cases = (
-                        from c in doc.Descendants("interval")
+                        from c in result.Descendants
                         where c.Element("dtEnd").Value == ""
                         select new FogBugzCase
                             {
@@ -157,6 +166,9 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                         stopWorkToolStripMenuItem.Enabled = true;
                     }
                 }
+                else if (result.IsFogBugzError) result.FogBugzError.Show(this);
+                else if (result.IsWebException) result.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
+                else if (result.IsException) result.ShowException(this, "An error occurred");
             }
         }
 
@@ -168,9 +180,8 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             if (IsLoggedIn)
             {
                 XDocument doc = XDocument.Load(GetCommandUrlWithToken(String.Format("cmd=search&q=assignedto:%22{0}%22%20status:active&cols=sTitle,ixProject,sFixFor,sProject,dtFixFor,ixPriority", System.Web.HttpUtility.UrlEncode(Settings.Default.Name).Replace("+", "%20"))));
-                FogBugzApiError error;
-                if (doc.IsFogBugzError(out error)) error.Show(this);
-                else
+                XDocumentDescendantsResult result;
+                if (doc.TryGetDescendants("case", out result))
                 {
                     // Get a list of recent project ids
                     List<Int32> recentProjects = new List<Int32>((
@@ -194,7 +205,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                     cases = new List<FogBugzCase>();
                     // Get the 10 most recently submitted cases.
                     cases.AddRange((
-                        from c in doc.Descendants("case")
+                        from c in result.Descendants
                         orderby Int32.Parse(c.Attribute("ixBug").Value) descending
                         select new FogBugzCase
                         {
@@ -225,6 +236,9 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                             Priority = Int32.Parse(c.Element("ixPriority").Value)
                         }));
                 }
+                else if (result.IsFogBugzError) result.FogBugzError.Show(this);
+                else if (result.IsWebException) result.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
+                else if (result.IsException) result.ShowException(this, "An error occurred");
             }
         }
 

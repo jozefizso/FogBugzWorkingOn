@@ -40,6 +40,7 @@
             this.tray = new System.Windows.Forms.NotifyIcon(this.components);
             this.menu = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.logInToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.projectsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.casesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -50,7 +51,6 @@
             this.tbManualCase = new System.Windows.Forms.ToolStripTextBox();
             this.stopWorkToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.btnOk = new System.Windows.Forms.Button();
-            this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -131,7 +131,7 @@
             this.tbManualCase,
             this.stopWorkToolStripMenuItem});
             this.menu.Name = "menu";
-            this.menu.Size = new System.Drawing.Size(161, 223);
+            this.menu.Size = new System.Drawing.Size(161, 201);
             this.menu.Click += new System.EventHandler(this.menu_Click);
             // 
             // logInToolStripMenuItem
@@ -140,6 +140,13 @@
             this.logInToolStripMenuItem.Size = new System.Drawing.Size(160, 22);
             this.logInToolStripMenuItem.Text = "&Log In...";
             this.logInToolStripMenuItem.Click += new System.EventHandler(this.logInToolStripMenuItem_Click);
+            // 
+            // aboutToolStripMenuItem
+            // 
+            this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
+            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(160, 22);
+            this.aboutToolStripMenuItem.Text = "&About...";
+            this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
             // 
             // toolStripSeparator1
             // 
@@ -211,13 +218,6 @@
             this.btnOk.Text = "OK";
             this.btnOk.UseVisualStyleBackColor = true;
             this.btnOk.Click += new System.EventHandler(this.btnOk_Click);
-            // 
-            // aboutToolStripMenuItem
-            // 
-            this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(160, 22);
-            this.aboutToolStripMenuItem.Text = "&About...";
-            this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
             // 
             // MainForm
             // 

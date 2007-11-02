@@ -21,12 +21,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_C05A39AD6DBD4A7A9E7A066315EC629A"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_UNDEFINED"
         "OwnerKey" = "8:_377C1E9AA70B4C80805077ACC9C48860"
         "MsmSig" = "8:_UNDEFINED"
@@ -126,26 +120,6 @@
         }
         "File"
         {
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C05A39AD6DBD4A7A9E7A066315EC629A"
-            {
-            "SourcePath" = "8:..\\fb.ico"
-            "TargetName" = "8:fb.ico"
-            "Tag" = "8:"
-            "Folder" = "8:_861B700AA09049478E4E4173C841968B"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
         }
         "FileType"
         {
@@ -241,8 +215,8 @@
         "Keywords" = "8:"
         "ARPCOMMENTS" = "8:"
         "ARPURLINFOABOUT" = "8:http://www.dandoes.net"
-        "ARPPRODUCTICON" = "8:_C05A39AD6DBD4A7A9E7A066315EC629A"
-        "ARPIconIndex" = "3:0"
+        "ARPPRODUCTICON" = "8:_377C1E9AA70B4C80805077ACC9C48860"
+        "ARPIconIndex" = "3:32512"
         "SearchPath" = "8:"
         "UseSystemSearchPath" = "11:TRUE"
         "TargetPlatform" = "3:0"
@@ -350,12 +324,12 @@
             "Arguments" = "8:"
             "Description" = "8:"
             "ShowCmd" = "3:1"
-            "IconIndex" = "3:0"
+            "IconIndex" = "3:32512"
             "Transitive" = "11:FALSE"
             "Target" = "8:_377C1E9AA70B4C80805077ACC9C48860"
             "Folder" = "8:_6E6AA1F9B705478FA13D009D04E188F6"
             "WorkingFolder" = "8:_861B700AA09049478E4E4173C841968B"
-            "Icon" = "8:_C05A39AD6DBD4A7A9E7A066315EC629A"
+            "Icon" = "8:_377C1E9AA70B4C80805077ACC9C48860"
             "Feature" = "8:"
             }
             "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_9FB753D74A12419387A6A8487FA8AA72"
@@ -364,12 +338,12 @@
             "Arguments" = "8:"
             "Description" = "8:"
             "ShowCmd" = "3:1"
-            "IconIndex" = "3:0"
+            "IconIndex" = "3:32512"
             "Transitive" = "11:FALSE"
             "Target" = "8:_377C1E9AA70B4C80805077ACC9C48860"
             "Folder" = "8:_20254A73F9A44B43A23F5B398E8FF960"
             "WorkingFolder" = "8:_861B700AA09049478E4E4173C841968B"
-            "Icon" = "8:_C05A39AD6DBD4A7A9E7A066315EC629A"
+            "Icon" = "8:_377C1E9AA70B4C80805077ACC9C48860"
             "Feature" = "8:"
             }
         }

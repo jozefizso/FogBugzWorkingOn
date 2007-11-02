@@ -14,6 +14,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
 {
     public partial class MainForm : Form
     {
+        private FogBugzCase lastWorkedCase;
         private FogBugzCase workingCase;
         private List<FogBugzCase> cases;
         private List<FogBugzCase> caseHistory;
@@ -141,23 +142,43 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 XDocumentDescendantsResult result;
                 if (doc.TryGetDescendants("interval", out result))
                 {
+                    // Get the current working case
                     IEnumerable<FogBugzCase> cases = (
                         from c in result.Descendants
                         where c.Element("dtEnd").Value == ""
                         select new FogBugzCase
-                            {
-                                Id = Int32.Parse(c.Element("ixBug").Value),
-                                Title = c.Element("sTitle").Value
-                            });
-
+                        {
+                            Id = Int32.Parse(c.Element("ixBug").Value),
+                            Title = c.Element("sTitle").Value
+                        });
                     if (cases.Count() > 0) workingCase = cases.First();
                     else workingCase = null;
+
+                    // Get the most recently worked on case
+                    cases = (
+                        from c in result.Descendants
+                        orderby c.Element("dtEnd").Value == "" ? DateTime.MinValue : DateTime.Parse(c.Element("dtEnd").Value) descending
+                        select new FogBugzCase
+                        {
+                            Id = Int32.Parse(c.Element("ixBug").Value),
+                            Title = c.Element("sTitle").Value
+                        });
+                    if (cases.Count() > 0) lastWorkedCase = cases.First();
+                    else lastWorkedCase = null;
 
                     if (workingCase == null)
                     {
                         tray.Text = "Not working on anything.";
-                        stopWorkToolStripMenuItem.Text = "&Stop Work";
-                        stopWorkToolStripMenuItem.Enabled = false;
+                        if (lastWorkedCase == null)
+                        {
+                            stopWorkToolStripMenuItem.Text = "&Stop Work";
+                            stopWorkToolStripMenuItem.Enabled = false;
+                        }
+                        else
+                        {
+                            stopWorkToolStripMenuItem.Text = String.Format("&Resume Work on Case {0}", lastWorkedCase.Id);
+                            stopWorkToolStripMenuItem.Enabled = true;
+                        }
                     }
                     else
                     {

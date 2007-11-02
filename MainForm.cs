@@ -489,6 +489,15 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             }
         }
 
+        /// <summary>
+        /// Handles the click event of the about menu item, which displays a modal dialog
+        /// with version and other information.
+        /// </summary>
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            new AboutBox().ShowDialog(this);
+        }
+
         #endregion
 
         #region [ Utility Methods ]

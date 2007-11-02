@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
 using System.Xml.Linq;
 
 namespace GratisInc.Tools.FogBugz.WorkingOn
@@ -115,6 +117,14 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 truncateIndex = length;
             }
             return String.Format("{0}\x2026", input.Substring(0, truncateIndex));
+        }
+
+        public static void OpenUrl(this Form form, String url)
+        {
+            Process p = new Process();
+            p.StartInfo.FileName = url;
+            p.Start();
+            p.Dispose();
         }
     }
 }

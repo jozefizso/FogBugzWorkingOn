@@ -390,7 +390,8 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         /// </summary>
         private void stopWorkToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            StopWork();
+            if (workingCase == null && lastWorkedCase != null) StartWork(lastWorkedCase.Id);
+            else if (workingCase != null) StopWork();
         }
 
         /// <summary>
@@ -482,10 +483,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             if (!String.IsNullOrEmpty(Settings.Default.Server))
             {
-                System.Diagnostics.Process proc = new System.Diagnostics.Process();
-                proc.StartInfo.FileName = String.Format("http://{0}/", Settings.Default.Server);
-                proc.Start();
-                proc.Dispose();                
+                this.OpenUrl(String.Format("http://{0}/{1}", Settings.Default.Server, workingCase == null ? String.Empty : String.Format("?{0}", workingCase.Id)));
             }
         }
 

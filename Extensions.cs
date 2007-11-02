@@ -119,6 +119,10 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             return String.Format("{0}\x2026", input.Substring(0, truncateIndex));
         }
 
+        /// <summary>
+        /// Opens the specified url in the user's browser.
+        /// </summary>
+        /// <param name="url">The url to open.</param>
         public static void OpenUrl(this Form form, String url)
         {
             Process p = new Process();

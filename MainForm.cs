@@ -161,7 +161,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                     }
                     else
                     {
-                        tray.Text = String.Format("Working on Case {0} - {1}.", workingCase.Id, workingCase.Title);
+                        tray.Text = String.Format("Working on Case {0} - {1}.", workingCase.Id, workingCase.Title).TruncateByLetters(64);
                         stopWorkToolStripMenuItem.Text = String.Format("&Stop Work on Case {0}", workingCase.Id);
                         stopWorkToolStripMenuItem.Enabled = true;
                     }

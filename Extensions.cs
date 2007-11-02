@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace GratisInc.Tools.FogBugz.WorkingOn
@@ -82,6 +83,38 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 error = null;
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Truncates the string to the specified length. This method attempts to
+        /// find a good "stopping place", like punctuation, whitespace, etc to cut
+        /// off the text.
+        /// </summary>
+        /// <param name="input">The string to be truncated.</param>
+        /// <param name="length">The target length of the string, including a trailing ellipsis character.</param>
+        public static String TruncateByLetters(this String input, Int32 length)
+        {
+            length--;
+
+            // If the string is null, return null.
+            //
+            if (input == null) return null;
+
+            // If the string is short enough, just return it.
+            //
+            if (input.Length <= length) return input;
+
+            Regex stoppingPlace = new Regex(@"[\s.,;:!-&\)]");
+            Int32 truncateIndex = length;
+            while (!stoppingPlace.Match(input.Substring(truncateIndex, 1)).Success && truncateIndex > 5)
+            {
+                truncateIndex--;
+            }
+            if (truncateIndex <= 5)
+            {
+                truncateIndex = length;
+            }
+            return String.Format("{0}\x2026", input.Substring(0, truncateIndex));
         }
     }
 }

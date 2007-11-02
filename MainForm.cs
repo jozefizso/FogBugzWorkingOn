@@ -276,6 +276,10 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 XDocument doc = XDocument.Load(GetCommandUrlWithToken(String.Format("cmd=startWork&ixBug={0}", caseId)));
                 if (doc.IsFogBugzError(out error))
                 {
+                    if (error.Code == 7)
+                    {
+                        this.OpenUrl(String.Format("http://{0}/default.asp?pg=pgEditBug&ixBug={1}&command=edit", Settings.Default.Server, caseId));
+                    }
                     return false;
                 }
                 else
@@ -420,6 +424,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                     {
                         tbManualCase.Text = caseId.ToString();
                         tbManualCase.SelectAll();
+                        error.Show(this);
                     }
                 }
                 else MessageBox.Show(this, "Invalid Entry", "You value you entered is not a valid case number.", MessageBoxButtons.OK, MessageBoxIcon.Warning);

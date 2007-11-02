@@ -110,7 +110,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             {
                 truncateIndex--;
             }
-            if (truncateIndex <= 5)
+            if (truncateIndex <= length / 2)
             {
                 truncateIndex = length;
             }

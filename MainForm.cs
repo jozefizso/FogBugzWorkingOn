@@ -112,7 +112,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             if (IsLoggedIn)
             {
-                String command = String.Format("cmd=search&q=resolvedby:\"{0}\" resolved:\"{1}-{2}\"&cols=ixProject,sFixFor", Settings.Default.Name, DateTime.Now.AddDays(-7).ToShortDateString(), DateTime.Now.ToShortDateString());
+                String command = String.Format("cmd=search&q=resolvedby:\"{0}\" resolved:\"{1}-{2}\"&cols=ixProject,sFixFor", Settings.Default.Name, DateTime.Now.AddDays(-7).ToShortDateString().Replace("-", "/"), DateTime.Now.ToShortDateString().Replace("-", "/"));
                 XDocument doc = XDocument.Load(GetCommandUrlWithToken(command));
                 XDocumentDescendantsResult result;
                 if (doc.TryGetDescendants("case", out result))

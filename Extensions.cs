@@ -108,11 +108,12 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
 
             Regex stoppingPlace = new Regex(@"[\s.,;:!-&\)]");
             Int32 truncateIndex = length;
-            while (!stoppingPlace.Match(input.Substring(truncateIndex, 1)).Success && truncateIndex > 5)
+            Int32 minLength = length / 2;
+            while (!stoppingPlace.Match(input.Substring(truncateIndex, 1)).Success && truncateIndex > minLength)
             {
                 truncateIndex--;
             }
-            if (truncateIndex <= length / 2)
+            if (truncateIndex < minLength)
             {
                 truncateIndex = length;
             }

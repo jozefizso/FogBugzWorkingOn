@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
+using System.Diagnostics;
 
 namespace GratisInc.Tools.FogBugz.WorkingOn
 {
@@ -22,11 +23,14 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         public MainForm()
         {
             InitializeComponent();
+
+			Font = SystemFonts.DialogFont;
+
             tbManualCase.TextBox.LostFocus += new EventHandler(TextBox_LostFocus);
 
             // Position the form to the bottom right corner.
-            Int32 x = SystemInformation.WorkingArea.Right - this.Width;
-            Int32 y = SystemInformation.WorkingArea.Bottom - this.Height;
+            Int32 x = SystemInformation.WorkingArea.Right - this.Width - SystemInformation.VerticalResizeBorderThickness;
+			Int32 y = SystemInformation.WorkingArea.Bottom - this.Height - SystemInformation.HorizontalResizeBorderThickness;
             this.SetDesktopLocation(x, y);
 
             // Load any saved settings into the form.
@@ -121,8 +125,8 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                         from c in result.Descendants
                         select new FogBugzCase
                         {
-                            ProjectId = Int32.Parse(c.Element("ixProject").Value),
-                            FixFor = c.Element("sFixFor").Value
+							ProjectId = (int)c.Element("ixProject"),
+                            FixFor    = (string)c.Element("sFixFor")
                         }));
                 }
                 else if (result.IsFogBugzError) result.FogBugzError.Show(this);
@@ -359,6 +363,12 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             Logon();
         }
 
+
+		private void btnCancel_Click(object sender, EventArgs e)
+		{
+			HideForm();
+		}
+
         /// <summary>
         /// Handles the click event of the "Log In" menu item.
         /// </summary>
@@ -513,6 +523,15 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             return String.Format("http://{0}/api.asp?{1}&token={2}", Settings.Default.Server, command, Settings.Default.Token);
         }
 
+		/// <summary>
+		/// Adds a new menu item to the given menu item.
+		/// </summary>
+		/// <param name="parent">The menu item to add the child to.</param>
+		/// <param name="text">The text of the menu item.</param>
+		private ToolStripMenuItem AddMenuItem(ToolStripMenuItem parent, String text)
+		{
+			return AddMenuItem(parent, null, text, null, false);
+		}
         /// <summary>
         /// Adds a new menu item to the given menu item.
         /// </summary>
@@ -521,15 +540,17 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         /// <param name="text">The text of the menu item.</param>
         /// <param name="clickHandler">The click handler for the menu item.</param>
         /// <param name="isSelected">Whether or not the item should be checked.</param>
-        private void AddMenuItem(ToolStripMenuItem parent, Object tag, String text, EventHandler clickHandler, Boolean isSelected)
+		private ToolStripMenuItem AddMenuItem(ToolStripMenuItem parent, Object tag, String text, EventHandler clickHandler, Boolean isSelected)
         {
             ToolStripMenuItem menuItem = new ToolStripMenuItem();
             menuItem.Tag = tag;
-            menuItem.Text = text;
-            menuItem.Click += clickHandler;
+            menuItem.Text = text.Replace("&", "&&"); // don't interpret & as accelerator prefix
+			if (clickHandler != null)
+				menuItem.Click += clickHandler;
             menuItem.Checked = isSelected;
             if (isSelected) menuItem.Font = new Font(menuItem.Font, FontStyle.Bold);
             parent.DropDownItems.Add(menuItem);
+			return menuItem;
         }
 
         /// <summary>
@@ -592,9 +613,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 // Create a menu item for each project.
                 foreach (IGrouping<String, FogBugzCase> p in cases.GroupBy(c => c.Project))
                 {
-                    ToolStripMenuItem projectMenu = new ToolStripMenuItem();
-                    projectMenu.Text = p.Key;
-                    projectsToolStripMenuItem.DropDownItems.Add(projectMenu);
+					ToolStripMenuItem projectMenu = AddMenuItem(projectsToolStripMenuItem, p.Key);
 
                     // Create a menu item for each "Fix For" with the project.
                     foreach (IGrouping<String, FogBugzCase> f in cases.Where(c => c.Project == p.Key).OrderBy<FogBugzCase, DateTime>(c => c.FixForDate).GroupBy(c => c.FixFor))
@@ -615,6 +634,44 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         }
 
         #endregion
+
+		private void tray_MouseClick(object sender, MouseEventArgs e)
+		{
+			// Show menu when left-clicked. Right-click is taken care if automatically by NotifyIcon.ContextMenuStrip
+			if (e.Button == MouseButtons.Left)
+				showMenuInTaskBar(menu);
+		}
+
+		void showMenuInTaskBar(ContextMenuStrip menu)
+		{
+			// See http://support.microsoft.com/kb/135788
+			SetForegroundWindow(menu.Handle);
+
+			Point menuPos = Control.MousePosition - menu.Size;
+
+			// Handle taskbar being docked in locations other than bottom of screen.
+			Rectangle screen = Screen.FromPoint(Control.MousePosition).Bounds;
+			if (menuPos.X < screen.X)
+				menuPos.X += menu.Width;
+			if (menuPos.Y < screen.Y)
+				menuPos.Y += menu.Height;
+
+			// Note: this constrains the window within the desktop, NOT overlapping the taskbar
+			menu.Show(menuPos); 
+			// ... so now set the pos explicitly so we overlap taskbar
+			SetWindowPos(menu.Handle, IntPtr.Zero, menuPos.X, menuPos.Y, 0, 0, SWP_NOSIZE | SWP_NOOWNERZORDER);
+		}
+
+		#region [ API calls for showMenuInTaskBar() ]
+		const int SWP_NOSIZE = 0x0001;
+		const int SWP_NOOWNERZORDER = 0x0200;
+
+		[DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
+		static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, int flags);
+
+		[DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
+		static extern bool SetForegroundWindow(IntPtr hWnd);
+		#endregion
 
     }
 }

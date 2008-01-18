@@ -74,7 +74,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                     from c in doc.Descendants("error")
                     select new FogBugzApiError
                     {
-                        Code = Int32.Parse(c.Attribute("code").Value),
+                        Code = (int)c.Attribute("code"),
                         Message = c.Value
                     }
                     ).First();
@@ -126,10 +126,14 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         /// <param name="url">The url to open.</param>
         public static void OpenUrl(this Form form, String url)
         {
-            Process p = new Process();
-            p.StartInfo.FileName = url;
-            p.Start();
-            p.Dispose();
+			try
+			{
+				Process.Start(url);
+			}
+			catch (Exception)
+			{
+				; // Firefox in some scenarios will result in a Win32Exception so ignore it.
+			}
         }
     }
 }

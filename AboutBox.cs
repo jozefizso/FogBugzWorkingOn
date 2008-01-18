@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
+using System.Diagnostics;
 
 namespace GratisInc.Tools.FogBugz.WorkingOn
 {
@@ -104,5 +105,17 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             this.OpenUrl(linkLabel.Text);
         }
+
+		private void linkLabel_LinkClicked_1(object sender, LinkLabelLinkClickedEventArgs e)
+		{
+			try
+			{
+				Process.Start(linkLabel.Text);
+			}
+			catch (Win32Exception)
+			{
+				; // Firefox can return error code is some cases
+			}
+		}
     }
 }

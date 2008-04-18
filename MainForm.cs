@@ -79,7 +79,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             commandScript = null;
 
             // Parse the input controls to get the protocol, server and path
-            Match match = reServerPath.Match(tbServer.Text);
+            Match match = reServerPath.Match(tbServer.Text.ToLower());
             var serverInfo = new
             {
                 // If the user checked the ssl checkbox, use https, otherwise get the value from
@@ -126,15 +126,21 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 {
                     if (result.Descendants.Count() == 1)
                     {
-                        Settings.Default.Server = tbServer.Text;
-                        Settings.Default.UseSSL = cbSSL.Checked;
+                        Settings.Default.Server = String.Format("{0}{1}{2}",
+                            serverInfo.Server,
+                            String.IsNullOrEmpty(serverInfo.Port) ? String.Empty : String.Format(":{0}", serverInfo.Port),
+                            String.IsNullOrEmpty(serverInfo.Path) ? String.Empty : String.Format("/{0}", serverInfo.Path));
+                        Settings.Default.UseSSL = cbSSL.Checked || serverInfo.Protocol == "https";
                         Settings.Default.User = tbUser.Text;
                         Settings.Default.Password = tbPassword.Text;
                         Settings.Default.Token = result.Descendants.First<XElement>().Value;
                         Settings.Default.Save();
 
+                        tbServer.Text = Settings.Default.Server;
+                        cbSSL.Checked = Settings.Default.UseSSL;
+
                         HideForm();
-                        tray.ShowBalloonTip(0, String.Format("Logged into {0}", Settings.Default.Server), "Now get crackin!", ToolTipIcon.Info);
+                        tray.ShowBalloonTip(0, String.Format("Logged into {0}", serverInfo.Server), "Now get crackin!", ToolTipIcon.Info);
                         updateTimer.Start();
                         UpdateName();
                         UpdateFogBugzData();

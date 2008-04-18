@@ -346,7 +346,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             if (IsLoggedIn)
             {
-                XDocument intDoc = LoadDoc(GetCommandUrlWithToken("cmd=listIntervals&dtEnd={0}", DateTime.Now.AddDays(-7).ToShortDateString().Replace("/", "-")));
+                XDocument intDoc = LoadDoc(GetCommandUrlWithToken("cmd=listIntervals&dtStart={0}", DateTime.Now.AddDays(-14).ToShortDateString().Replace("/", "-")));
                 XDocument caseDoc = LoadDoc(GetCommandUrlWithToken("cmd=search&q=assignedto:%22{0}%22%20status:active&cols=sTitle,ixProject,sFixFor,sProject,dtFixFor,ixPriority", HttpUtility.UrlEncode(Settings.Default.Name).Replace("+", "%20")));
                 XDocumentDescendantsResult intResult;
                 XDocumentDescendantsResult caseResult;

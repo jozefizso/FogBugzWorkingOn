@@ -27,6 +27,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         private List<FogBugzCase> cases;
         private List<FogBugzCase> caseHistory;
         private List<FogBugzCase> recentCases;
+        private DateTime startedOn;
 
         public MainForm()
         {
@@ -403,6 +404,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 XDocument doc = LoadDoc(GetCommandUrlWithToken(String.Format("cmd=startWork&ixBug={0}", caseId)));
                 if (doc.IsFogBugzError(out error))
                 {
+                    startedOn = DateTime.MinValue;
                     if (error.Code == 7)
                     {
                         this.OpenUrl(String.Format("{0}/?pg=pgEditBug&ixBug={1}&command=edit", serverUrl, caseId));
@@ -411,6 +413,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 }
                 else
                 {
+                    startedOn = DateTime.Now;
                     UpdateFogBugzData();
                     tray.ShowBalloonTip(0, String.Format("Work started on Case {0}", caseId), workingCase.Title, ToolTipIcon.Info);
                     return true;
@@ -430,7 +433,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         private void StartWork(Int32 caseId)
         {
             if (IsLoggedIn)
-            {
+            {                
                 FogBugzApiError error;
                 TryStartWork(caseId, out error);
             }
@@ -442,11 +445,12 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         private void StopWork()
         {
             if (IsLoggedIn)
-            {
+            {                
                 XDocument doc = LoadDoc(GetCommandUrlWithToken("cmd=stopWork"));
                 FogBugzApiError error;
-                String title = String.Format("Work stopped on Case {0}", workingCase.Id);
-                String text = workingCase.Title;
+                Int32 totalMinutes = (Int32)Math.Round(((TimeSpan)(DateTime.Now - startedOn)).TotalMinutes);
+                String title = String.Format("Work stopped on Case {0}.", workingCase.Id);
+                String text = workingCase.Title + Environment.NewLine + String.Format("{0} minute(s) logged.", totalMinutes);
                 if (doc.IsFogBugzError(out error)) error.Show(this);
                 else
                 {

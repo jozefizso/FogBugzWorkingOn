@@ -1,20 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
-using System.Diagnostics;
 
 namespace GratisInc.Tools.FogBugz.WorkingOn
 {
     public partial class MainForm : Form
     {
+        private const String SERVER_PATH_EXPRESSION = @"^(?:(?<protocol>http[s]?)://)?(?<server>[\w-_\.]+)(?:\:(?<port>\d{1,5}))?/?(?<path>[\w-_/%]+?)?/?$";
+        private Regex reServerPath = new Regex(SERVER_PATH_EXPRESSION);
+        private String serverUrl;
+        private String commandScript;
+
         private FogBugzCase lastWorkedCase;
         private FogBugzCase workingCase;
         private List<FogBugzCase> cases;
@@ -35,13 +41,26 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
 
             // Load any saved settings into the form.
             tbServer.Text = Settings.Default.Server;
+            cbSSL.Checked = Settings.Default.UseSSL;
             tbUser.Text = Settings.Default.User;
             tbPassword.Text = Settings.Default.Password;
 
             // If the settings are all present, automatically initiate the logon process.
-            if (tbServer.Text != "" && tbUser.Text != "" && tbPassword.Text != "")
+            if (reServerPath.IsMatch(tbServer.Text) && !String.IsNullOrEmpty(tbUser.Text) && !String.IsNullOrEmpty(tbPassword.Text))
             {
                 Logon();
+            }
+            else if (!reServerPath.IsMatch(tbServer.Text))
+            {
+                MessageBox.Show(this, "Could not determine the FogBugz server and/or path to use. Please check your input and try again.", "Invalid server or path", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            else if (tbUser.Text == String.Empty)
+            {
+                MessageBox.Show(this, "Please enter your user name.", "Authentication error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            else if (tbPassword.Text == String.Empty)
+            {
+                MessageBox.Show(this, "Please enter your password.", "Authentication error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
                 
@@ -53,13 +72,52 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         /// </summary>
         private void Logon()
         {
-            XDocument doc = XDocument.Load(String.Format("http://{0}/api.asp?cmd=logon&email={1}&password={2}", tbServer.Text, tbUser.Text, tbPassword.Text));
+            serverUrl = null;
+            commandScript = null;
+
+            // Parse the input controls to get the protocol, server and path
+            Match match = reServerPath.Match(tbServer.Text);
+            var serverInfo = new
+            {
+                // If the user checked the ssl checkbox, use https, otherwise get the value from
+                // the server textbox, defaulting to http if the user did not specify a protocol
+                Protocol = cbSSL.Checked ? "https://" :
+                    (match.Groups["protocol"].Success ? match.Groups["protocol"].Value : "http"),
+                Server = match.Groups["server"],
+                Port = match.Groups["port"].Success ? match.Groups["port"].Value : String.Empty,
+                Path = match.Groups["path"].Success ? match.Groups["path"].Value : String.Empty
+            };
+
+            // Build the server url
+            serverUrl = String.Format("{0}://{1}{2}/{3}",
+                serverInfo.Protocol,
+                serverInfo.Server,
+                String.IsNullOrEmpty(serverInfo.Port) ? String.Empty : String.Format(":{0}", serverInfo.Port),
+                String.IsNullOrEmpty(serverInfo.Path) ? String.Empty : String.Format("{0}/", serverInfo.Path));
+
+            // Get the command url from the api.xml document
+            try
+            {
+                XDocument apiDoc = XDocument.Load(String.Format("{0}api.xml", serverUrl));
+                XDocumentDescendantsResult apiResult;
+                if (apiDoc.TryGetDescendants("response", out apiResult))
+                {
+                    commandScript = apiResult.Descendants.First().Element("url").Value;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, String.Format("Error connecting to server: {0}", ex.Message), "Server error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            XDocument doc = XDocument.Load(String.Format("{0}{1}cmd=logon&email={2}&password={3}", serverUrl, commandScript, tbUser.Text, tbPassword.Text));
             XDocumentDescendantsResult result;
             if (doc.TryGetDescendants("token", out result))
             {
                 if (result.Descendants.Count() == 1)
                 {
                     Settings.Default.Server = tbServer.Text;
+                    Settings.Default.UseSSL = cbSSL.Checked;
                     Settings.Default.User = tbUser.Text;
                     Settings.Default.Password = tbPassword.Text;
                     Settings.Default.Token = result.Descendants.First<XElement>().Value;
@@ -282,7 +340,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 {
                     if (error.Code == 7)
                     {
-                        this.OpenUrl(String.Format("http://{0}/default.asp?pg=pgEditBug&ixBug={1}&command=edit", Settings.Default.Server, caseId));
+                        this.OpenUrl(String.Format("{0}/?pg=pgEditBug&ixBug={1}&command=edit", serverUrl, caseId));
                     }
                     return false;
                 }
@@ -498,7 +556,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             if (!String.IsNullOrEmpty(Settings.Default.Server))
             {
-                this.OpenUrl(String.Format("http://{0}/{1}", Settings.Default.Server, workingCase == null ? String.Empty : String.Format("?{0}", workingCase.Id)));
+                this.OpenUrl(String.Format("{0}{1}", serverUrl, workingCase == null ? String.Empty : String.Format("?{0}", workingCase.Id)));
             }
         }
 
@@ -520,7 +578,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         /// </summary>
         private String GetCommandUrlWithToken(String command)
         {
-            return String.Format("http://{0}/api.asp?{1}&token={2}", Settings.Default.Server, command, Settings.Default.Token);
+            return String.Format("{0}{1}{2}&token={3}", serverUrl, commandScript, command, Settings.Default.Token);
         }
 
 		/// <summary>

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Web;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Linq;
@@ -98,41 +99,49 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             // Get the command url from the api.xml document
             try
             {
-                XDocument apiDoc = XDocument.Load(String.Format("{0}api.xml", serverUrl));
+                XDocument apiDoc = LoadDoc(String.Format("{0}api.xml", serverUrl));
                 XDocumentDescendantsResult apiResult;
-                if (apiDoc.TryGetDescendants("response", out apiResult))
+                FogBugzApiError error;
+                if (apiDoc.IsFogBugzError(out error))
+                {
+                    error.Show(this);
+                }
+                else if (apiDoc.TryGetDescendants("response", out apiResult))
                 {
                     commandScript = apiResult.Descendants.First().Element("url").Value;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, String.Format("Error connecting to server: {0}", ex.Message), "Server error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, String.Format("Error connecting to server: {0}. Please check your connection and try again.", ex.Message), "Server error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            XDocument doc = XDocument.Load(String.Format("{0}{1}cmd=logon&email={2}&password={3}", serverUrl, commandScript, tbUser.Text, tbPassword.Text));
-            XDocumentDescendantsResult result;
-            if (doc.TryGetDescendants("token", out result))
+            if (!String.IsNullOrEmpty(commandScript))
             {
-                if (result.Descendants.Count() == 1)
+                XDocument doc = LoadDoc(String.Format("{0}{1}cmd=logon&email={2}&password={3}", serverUrl, commandScript, tbUser.Text, tbPassword.Text));
+                XDocumentDescendantsResult result;
+                if (doc.TryGetDescendants("token", out result))
                 {
-                    Settings.Default.Server = tbServer.Text;
-                    Settings.Default.UseSSL = cbSSL.Checked;
-                    Settings.Default.User = tbUser.Text;
-                    Settings.Default.Password = tbPassword.Text;
-                    Settings.Default.Token = result.Descendants.First<XElement>().Value;
-                    Settings.Default.Save();
+                    if (result.Descendants.Count() == 1)
+                    {
+                        Settings.Default.Server = tbServer.Text;
+                        Settings.Default.UseSSL = cbSSL.Checked;
+                        Settings.Default.User = tbUser.Text;
+                        Settings.Default.Password = tbPassword.Text;
+                        Settings.Default.Token = result.Descendants.First<XElement>().Value;
+                        Settings.Default.Save();
 
-                    HideForm();
-                    tray.ShowBalloonTip(0, String.Format("Logged into {0}", Settings.Default.Server), "Now get crackin!", ToolTipIcon.Info);
-                    updateTimer.Start();
-                    UpdateName();
-                    UpdateFogBugzData();
+                        HideForm();
+                        tray.ShowBalloonTip(0, String.Format("Logged into {0}", Settings.Default.Server), "Now get crackin!", ToolTipIcon.Info);
+                        updateTimer.Start();
+                        UpdateName();
+                        UpdateFogBugzData();
+                    }
                 }
+                else if (result.IsFogBugzError) result.FogBugzError.Show(this);
+                else if (result.IsWebException) result.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
+                else if (result.IsException) result.ShowException(this, "An error occurred");
             }
-            else if (result.IsFogBugzError) result.FogBugzError.Show(this);
-            else if (result.IsWebException) result.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
-            else if (result.IsException) result.ShowException(this, "An error occurred");
         }
 
         /// <summary>
@@ -142,7 +151,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             if (IsLoggedIn)
             {
-                XDocument doc = XDocument.Load(GetCommandUrlWithToken("cmd=viewPerson"));
+                XDocument doc = LoadDoc(GetCommandUrlWithToken("cmd=viewPerson"));
                 XDocumentDescendantsResult result;
                 if (doc.TryGetDescendants("person", out result))
                 {
@@ -170,12 +179,12 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         /// Updates an internal list of cases that the user has resolved in the past week,
         /// which assists in determining which cases are displayed in the menu.
         /// </summary>
-        private void UpdateCaseHistory()
+        private Boolean UpdateCaseHistory()
         {
             if (IsLoggedIn)
             {
                 String command = String.Format("cmd=search&q=resolvedby:\"{0}\" resolved:\"{1}-{2}\"&cols=ixProject,sFixFor", Settings.Default.Name, DateTime.Now.AddDays(-7).ToShortDateString().Replace("-", "/"), DateTime.Now.ToShortDateString().Replace("-", "/"));
-                XDocument doc = XDocument.Load(GetCommandUrlWithToken(command));
+                XDocument doc = LoadDoc(GetCommandUrlWithToken(command));
                 XDocumentDescendantsResult result;
                 if (doc.TryGetDescendants("case", out result))
                 {
@@ -186,21 +195,23 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
 							ProjectId = (int)c.Element("ixProject"),
                             FixFor    = (string)c.Element("sFixFor")
                         }));
+                    return true;
                 }
                 else if (result.IsFogBugzError) result.FogBugzError.Show(this);
                 else if (result.IsWebException) result.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
                 else if (result.IsException) result.ShowException(this, "An error occurred");
             }
+            return false;
         }
 
         /// <summary>
         /// Updates the internal working case record.
         /// </summary>
-        private void UpdateWorkingCase()
+        private Boolean UpdateWorkingCase()
         {
             if (IsLoggedIn)
             {
-                XDocument doc = XDocument.Load(GetCommandUrlWithToken("cmd=listIntervals"));
+                XDocument doc = LoadDoc(GetCommandUrlWithToken("cmd=listIntervals"));
                 XDocumentDescendantsResult result;
                 if (doc.TryGetDescendants("interval", out result))
                 {
@@ -248,21 +259,23 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                         stopWorkToolStripMenuItem.Text = String.Format("&Stop Work on Case {0}", workingCase.Id);
                         stopWorkToolStripMenuItem.Enabled = true;
                     }
+                    return true;
                 }
                 else if (result.IsFogBugzError) result.FogBugzError.Show(this);
                 else if (result.IsWebException) result.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
                 else if (result.IsException) result.ShowException(this, "An error occurred");
             }
+            return false;
         }
 
         /// <summary>
         /// Updates an internal list of cases the user is likely to be working on.
         /// </summary>
-        private void UpdateCases()
+        private Boolean UpdateCases()
         {
             if (IsLoggedIn)
             {
-                XDocument doc = XDocument.Load(GetCommandUrlWithToken(String.Format("cmd=search&q=assignedto:%22{0}%22%20status:active&cols=sTitle,ixProject,sFixFor,sProject,dtFixFor,ixPriority", System.Web.HttpUtility.UrlEncode(Settings.Default.Name).Replace("+", "%20"))));
+                XDocument doc = LoadDoc(GetCommandUrlWithToken(String.Format("cmd=search&q=assignedto:%22{0}%22%20status:active&cols=sTitle,ixProject,sFixFor,sProject,dtFixFor,ixPriority", System.Web.HttpUtility.UrlEncode(Settings.Default.Name).Replace("+", "%20"))));
                 XDocumentDescendantsResult result;
                 if (doc.TryGetDescendants("case", out result))
                 {
@@ -283,7 +296,6 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                                 Name = f.Key
                             }));
                     }
-
 
                     cases = new List<FogBugzCase>();
                     // Get the 10 most recently submitted cases.
@@ -318,11 +330,14 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                             FixForDateString = c.Element("dtFixFor").Value,
                             Priority = Int32.Parse(c.Element("ixPriority").Value)
                         }));
+
+                    return true;
                 }
                 else if (result.IsFogBugzError) result.FogBugzError.Show(this);
                 else if (result.IsWebException) result.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
                 else if (result.IsException) result.ShowException(this, "An error occurred");
             }
+            return false;
         }
 
         /// <summary>
@@ -335,7 +350,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             if (IsLoggedIn)
             {
-                XDocument doc = XDocument.Load(GetCommandUrlWithToken(String.Format("cmd=startWork&ixBug={0}", caseId)));
+                XDocument doc = LoadDoc(GetCommandUrlWithToken(String.Format("cmd=startWork&ixBug={0}", caseId)));
                 if (doc.IsFogBugzError(out error))
                 {
                     if (error.Code == 7)
@@ -378,7 +393,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             if (IsLoggedIn)
             {
-                XDocument doc = XDocument.Load(GetCommandUrlWithToken("cmd=stopWork"));
+                XDocument doc = LoadDoc(GetCommandUrlWithToken("cmd=stopWork"));
                 FogBugzApiError error;
                 String title = String.Format("Work stopped on Case {0}", workingCase.Id);
                 String text = workingCase.Title;
@@ -574,6 +589,22 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         #region [ Utility Methods ]
 
         /// <summary>
+        /// Attempts to load an XML document. If there is an exception, the method
+        /// returns a document with an error response.
+        /// </summary>
+        private XDocument LoadDoc(String format, params Object[] args)
+        {
+            String url = String.Format(format, args);
+            try { return XDocument.Load(url); }
+            catch (Exception ex)
+            {
+                String errorXml = String.Format("<error code=\"-1\">{0}</error>",
+                    String.Format("An error occurred while connecting to {0}: {1}{2}", HttpUtility.HtmlEncode(url), ex.Message, ex.Message.EndsWith(".") ? String.Empty : "."));
+                return XDocument.Parse(errorXml);
+            }
+        }
+
+        /// <summary>
         /// Gets the FogBugz api request uri with the given command and the current session's authentication token.
         /// </summary>
         private String GetCommandUrlWithToken(String command)
@@ -644,51 +675,57 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         /// </summary>
         private void UpdateFogBugzData()
         {
-            UpdateCaseHistory();
-            UpdateWorkingCase();
-            UpdateMenu();
+            Boolean continueUpdates = true;
+            if(continueUpdates) continueUpdates = UpdateCaseHistory();
+            if (continueUpdates) continueUpdates = UpdateWorkingCase();
+            if (continueUpdates) continueUpdates = UpdateMenu();
+            updateTimer.Enabled = continueUpdates;
         }
 
         /// <summary>
         /// Forces an update of case data and updates the menu's lists of cases.
         /// </summary>
-        private void UpdateMenu()
+        private Boolean UpdateMenu()
         {
             if (IsLoggedIn)
             {
-                UpdateCases();
-
-                // Update the "Cases" menu.
-                casesToolStripMenuItem.DropDownItems.Clear();
-                foreach (FogBugzCase cs in cases.OrderByDescending<FogBugzCase, Int32>(c => c.Id).Take(10))
+                if (UpdateCases())
                 {
-                    Boolean isSelected = workingCase == null ? false : workingCase.Id == cs.Id;
-                    AddMenuItem(casesToolStripMenuItem, cs.Id, String.Format("{0} - {1}", cs.Id, cs.Title), Case_Click, isSelected);
-                }
-
-                // Update the "Projects" menu.
-                projectsToolStripMenuItem.DropDownItems.Clear();
-                // Create a menu item for each project.
-                foreach (IGrouping<String, FogBugzCase> p in cases.GroupBy(c => c.Project))
-                {
-					ToolStripMenuItem projectMenu = AddMenuItem(projectsToolStripMenuItem, p.Key);
-
-                    // Create a menu item for each "Fix For" with the project.
-                    foreach (IGrouping<String, FogBugzCase> f in cases.Where(c => c.Project == p.Key).OrderBy<FogBugzCase, DateTime>(c => c.FixForDate).GroupBy(c => c.FixFor))
+                    // Update the "Cases" menu.
+                    casesToolStripMenuItem.DropDownItems.Clear();
+                    foreach (FogBugzCase cs in cases.OrderByDescending<FogBugzCase, Int32>(c => c.Id).Take(10))
                     {
-                        ToolStripMenuItem fixForMenu = new ToolStripMenuItem();
-                        fixForMenu.Text = f.Key;
-                        projectMenu.DropDownItems.Add(fixForMenu);
+                        Boolean isSelected = workingCase == null ? false : workingCase.Id == cs.Id;
+                        AddMenuItem(casesToolStripMenuItem, cs.Id, String.Format("{0} - {1}", cs.Id, cs.Title), Case_Click, isSelected);
+                    }
 
-                        // Create a menu item for each case in the "Fix For".
-                        foreach (FogBugzCase cs in cases.Where(c => c.Project == p.Key && c.FixFor == f.Key).OrderBy<FogBugzCase, Int32>(c => c.Priority).ThenByDescending<FogBugzCase, Int32>(c => c.Id).Distinct<FogBugzCase>().Take(10))
+                    // Update the "Projects" menu.
+                    projectsToolStripMenuItem.DropDownItems.Clear();
+                    // Create a menu item for each project.
+                    foreach (IGrouping<String, FogBugzCase> p in cases.GroupBy(c => c.Project))
+                    {
+                        ToolStripMenuItem projectMenu = AddMenuItem(projectsToolStripMenuItem, p.Key);
+
+                        // Create a menu item for each "Fix For" with the project.
+                        foreach (IGrouping<String, FogBugzCase> f in cases.Where(c => c.Project == p.Key).OrderBy<FogBugzCase, DateTime>(c => c.FixForDate).GroupBy(c => c.FixFor))
                         {
-                            Boolean isSelected = workingCase == null ? false : workingCase.Id == cs.Id;
-                            AddMenuItem(fixForMenu, cs.Id, String.Format("{0} - {1}", cs.Id, cs.Title), Case_Click, isSelected);
+                            ToolStripMenuItem fixForMenu = new ToolStripMenuItem();
+                            fixForMenu.Text = f.Key;
+                            projectMenu.DropDownItems.Add(fixForMenu);
+
+                            // Create a menu item for each case in the "Fix For".
+                            foreach (FogBugzCase cs in cases.Where(c => c.Project == p.Key && c.FixFor == f.Key).OrderBy<FogBugzCase, Int32>(c => c.Priority).ThenByDescending<FogBugzCase, Int32>(c => c.Id).Distinct<FogBugzCase>().Take(10))
+                            {
+                                Boolean isSelected = workingCase == null ? false : workingCase.Id == cs.Id;
+                                AddMenuItem(fixForMenu, cs.Id, String.Format("{0} - {1}", cs.Id, cs.Title), Case_Click, isSelected);
+                            }
                         }
                     }
+
+                    return true;
                 }
             }
+            return false;
         }
 
         #endregion
@@ -718,10 +755,10 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
 			menu.Show(menuPos); 
 			// ... so now set the pos explicitly so we overlap taskbar
 			SetWindowPos(menu.Handle, IntPtr.Zero, menuPos.X, menuPos.Y, 0, 0, SWP_NOSIZE | SWP_NOOWNERZORDER);
-		}
+        }
 
-		#region [ API calls for showMenuInTaskBar() ]
-		const int SWP_NOSIZE = 0x0001;
+        #region [ API calls for showMenuInTaskBar() ]
+        const int SWP_NOSIZE = 0x0001;
 		const int SWP_NOOWNERZORDER = 0x0200;
 
 		[DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
@@ -730,6 +767,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
 		[DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
 		static extern bool SetForegroundWindow(IntPtr hWnd);
 		#endregion
+
 
     }
 }

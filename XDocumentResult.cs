@@ -13,7 +13,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
     /// </summary>
     public class XDocumentDescendantsResult
     {
-        public IEnumerable<XElement> Descendants { get; set; }
+        public IList<XElement> Descendants { get; set; }
         public FogBugzApiError FogBugzError { get; set; }
         public Exception Exception { get; set; }
         public WebException WebException { get { return Exception as WebException; } }

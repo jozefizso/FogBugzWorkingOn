@@ -49,7 +49,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
                 }
                 else
                 {
-                    result.Descendants = doc.Descendants(name);
+                    result.Descendants = doc.Descendants(name).ToList();
                     return true;
                 }        
             }

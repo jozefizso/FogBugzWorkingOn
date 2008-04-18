@@ -26,6 +26,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         private FogBugzCase workingCase;
         private List<FogBugzCase> cases;
         private List<FogBugzCase> caseHistory;
+        private List<FogBugzCase> recentCases;
 
         public MainForm()
         {
@@ -340,6 +341,55 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             return false;
         }
 
+        private Boolean UpdateRecentCases()
+        {
+            if (IsLoggedIn)
+            {
+                XDocument intDoc = LoadDoc(GetCommandUrlWithToken("cmd=listIntervals&dtEnd={0}", DateTime.Now.AddDays(-7).ToShortDateString().Replace("/", "-")));
+                XDocument caseDoc = LoadDoc(GetCommandUrlWithToken("cmd=search&q=assignedto:%22{0}%22%20status:active&cols=sTitle,ixProject,sFixFor,sProject,dtFixFor,ixPriority", HttpUtility.UrlEncode(Settings.Default.Name).Replace("+", "%20")));
+                XDocumentDescendantsResult intResult;
+                XDocumentDescendantsResult caseResult;
+                Boolean intSuccess = intDoc.TryGetDescendants("interval", out intResult);
+                Boolean caseSuccess = caseDoc.TryGetDescendants("case", out caseResult);
+
+                if (intSuccess && caseSuccess)
+                {
+                    var recent = (
+                        from i in intResult.Descendants
+                        where !String.IsNullOrEmpty(i.Element("dtEnd").Value)
+                        group i by i.Element("ixBug").Value into intervalCases
+                        select new
+                        {
+                            Id = intervalCases.Key,
+                            LastAction = intervalCases.Max(d => DateTime.Parse(d.Element("dtEnd").Value))
+                        }).ToList();
+
+                    // Get the current working case
+                    recentCases = (
+                        from r in recent
+                        join c in caseResult.Descendants on r.Id equals c.Attribute("ixBug").Value                      
+                        select new FogBugzCase
+                        {
+                            Id = Int32.Parse(c.Attribute("ixBug").Value),
+                            Title = c.Element("sTitle").Value,
+                            FixFor = c.Element("sFixFor").Value,
+                            Project = c.Element("sProject").Value,
+                            ProjectId = Int32.Parse(c.Element("ixProject").Value),
+                            Priority = Int32.Parse(c.Element("ixPriority").Value),
+                            ResolvedOn = r.LastAction
+                        }).ToList();
+                    return true;
+                }
+                else if (intResult.IsFogBugzError) intResult.FogBugzError.Show(this);
+                else if (intResult.IsWebException) intResult.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
+                else if (intResult.IsException) intResult.ShowException(this, "An error occurred");
+                else if (caseResult.IsFogBugzError) caseResult.FogBugzError.Show(this);
+                else if (caseResult.IsWebException) caseResult.ShowException(this, String.Format("An error occurred while attempting to contact {0}", Settings.Default.Server));
+                else if (caseResult.IsException) caseResult.ShowException(this, "An error occurred");
+            }
+            return false;
+        }
+
         /// <summary>
         /// Attempts to start the time tracking timer for the specified case.
         /// </summary>
@@ -607,8 +657,9 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         /// <summary>
         /// Gets the FogBugz api request uri with the given command and the current session's authentication token.
         /// </summary>
-        private String GetCommandUrlWithToken(String command)
+        private String GetCommandUrlWithToken(String commandFormat, params Object[] args)
         {
+            String command = String.Format(commandFormat, args);
             return String.Format("{0}{1}{2}&token={3}", serverUrl, commandScript, command, Settings.Default.Token);
         }
 
@@ -689,14 +740,36 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             if (IsLoggedIn)
             {
-                if (UpdateCases())
+                if (UpdateCases() && UpdateRecentCases())
                 {
                     // Update the "Cases" menu.
                     casesToolStripMenuItem.DropDownItems.Clear();
-                    foreach (FogBugzCase cs in cases.OrderByDescending<FogBugzCase, Int32>(c => c.Id).Take(10))
+                    foreach (FogBugzCase cs in cases.OrderByDescending(c => c.Id).Take(10))
                     {
                         Boolean isSelected = workingCase == null ? false : workingCase.Id == cs.Id;
-                        AddMenuItem(casesToolStripMenuItem, cs.Id, String.Format("{0} - {1}", cs.Id, cs.Title), Case_Click, isSelected);
+                        AddMenuItem(casesToolStripMenuItem, cs.Id, String.Format("{0} - {1} ({2} {3})", cs.Id, cs.Title, cs.Project, cs.FixFor ?? String.Empty), Case_Click, isSelected);
+                    }
+                    if (casesToolStripMenuItem.DropDownItems.Count == 0)
+                    {
+                        ToolStripMenuItem menuItem = new ToolStripMenuItem();
+                        menuItem.Text = "No Cases";
+                        menuItem.Enabled = false;
+                        casesToolStripMenuItem.DropDownItems.Add(menuItem);
+                    }
+
+                    // Update the "Recent Cases" menu.
+                    recentCasesToolStripMenuItem.DropDownItems.Clear();
+                    foreach (FogBugzCase cs in recentCases.OrderByDescending(c => c.ResolvedOn))
+                    {
+                        Boolean isSelected = workingCase == null ? false : workingCase.Id == cs.Id;
+                        AddMenuItem(recentCasesToolStripMenuItem, cs.Id, String.Format("{0} - {1} ({2} {3})", cs.Id, cs.Title, cs.Project, cs.FixFor ?? String.Empty), Case_Click, isSelected);
+                    }
+                    if (recentCasesToolStripMenuItem.DropDownItems.Count == 0)
+                    {
+                        ToolStripMenuItem menuItem = new ToolStripMenuItem();
+                        menuItem.Text = "No Recent Cases";
+                        menuItem.Enabled = false;
+                        recentCasesToolStripMenuItem.DropDownItems.Add(menuItem);
                     }
 
                     // Update the "Projects" menu.

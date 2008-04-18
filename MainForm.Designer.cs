@@ -53,6 +53,7 @@
             this.btnOk = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
             this.cbSSL = new System.Windows.Forms.CheckBox();
+            this.recentCasesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -131,10 +132,11 @@
             this.toolStripSeparator2,
             this.exitToolStripMenuItem,
             this.toolStripSeparator3,
+            this.recentCasesToolStripMenuItem,
             this.tbManualCase,
             this.stopWorkToolStripMenuItem});
             this.menu.Name = "menu";
-            this.menu.Size = new System.Drawing.Size(161, 201);
+            this.menu.Size = new System.Drawing.Size(161, 245);
             this.menu.Click += new System.EventHandler(this.menu_Click);
             // 
             // logInToolStripMenuItem
@@ -243,6 +245,12 @@
             this.cbSSL.Text = "Use SSL (https://)";
             this.cbSSL.UseVisualStyleBackColor = true;
             // 
+            // recentCasesToolStripMenuItem
+            // 
+            this.recentCasesToolStripMenuItem.Name = "recentCasesToolStripMenuItem";
+            this.recentCasesToolStripMenuItem.Size = new System.Drawing.Size(160, 22);
+            this.recentCasesToolStripMenuItem.Text = "Recent Cases";
+            // 
             // MainForm
             // 
             this.AcceptButton = this.btnOk;
@@ -299,6 +307,7 @@
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
 		private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.CheckBox cbSSL;
+        private System.Windows.Forms.ToolStripMenuItem recentCasesToolStripMenuItem;
     }
 }
 

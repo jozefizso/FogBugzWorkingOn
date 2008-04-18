@@ -96,7 +96,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         /// <param name="length">The target length of the string, including a trailing ellipsis character.</param>
         public static String TruncateByLetters(this String input, Int32 length)
         {
-            length--;
+            length -= 2;
 
             // If the string is null, return null.
             //

@@ -84,9 +84,9 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             {
                 // If the user checked the ssl checkbox, use https, otherwise get the value from
                 // the server textbox, defaulting to http if the user did not specify a protocol
-                Protocol = cbSSL.Checked ? "https://" :
+                Protocol = cbSSL.Checked ? "https" :
                     (match.Groups["protocol"].Success ? match.Groups["protocol"].Value : "http"),
-                Server = match.Groups["server"],
+                Server = match.Groups["server"].Value,
                 Port = match.Groups["port"].Success ? match.Groups["port"].Value : String.Empty,
                 Path = match.Groups["path"].Success ? match.Groups["path"].Value : String.Empty
             };

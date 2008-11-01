@@ -191,7 +191,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             if (IsLoggedIn)
             {
-                String command = String.Format("cmd=search&q=resolvedby:\"{0}\" resolved:\"{1}-{2}\"&cols=ixProject,sFixFor", Settings.Default.Name, DateTime.Now.AddDays(-7).ToShortDateString().Replace("-", "/"), DateTime.Now.ToShortDateString().Replace("-", "/"));
+                String command = String.Format("cmd=search&q=resolvedby:\"{0}\" resolved:\"{1}-{2}\"&cols=ixProject,sFixFor", Settings.Default.Name, DateTime.Now.AddDays(-7).ToString("MM/dd/yyyy"), DateTime.Now.ToString("MM/dd/yyyy"));
                 XDocument doc = LoadDoc(GetCommandUrlWithToken(command));
                 XDocumentDescendantsResult result;
                 if (doc.TryGetDescendants("case", out result))
@@ -352,7 +352,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
         {
             if (IsLoggedIn)
             {
-                XDocument intDoc = LoadDoc(GetCommandUrlWithToken("cmd=listIntervals&dtStart={0}", DateTime.Now.AddDays(-14).ToShortDateString().Replace("/", "-")));
+                XDocument intDoc = LoadDoc(GetCommandUrlWithToken("cmd=listIntervals&dtStart={0}", DateTime.Now.ToString("MM/dd/yyyy")));
                 XDocument caseDoc = LoadDoc(GetCommandUrlWithToken("cmd=search&q=assignedto:%22{0}%22%20status:active&cols=sTitle,ixProject,sFixFor,sProject,dtFixFor,ixPriority", HttpUtility.UrlEncode(Settings.Default.Name).Replace("+", "%20")));
                 XDocumentDescendantsResult intResult;
                 XDocumentDescendantsResult caseResult;

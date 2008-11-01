@@ -16,8 +16,8 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
             set
             {
                 DateTime ffd;
-                if (DateTime.TryParse(value, out ffd)) FixForDate = ffd;
-                else FixForDate = DateTime.MaxValue;
+                if (DateTime.TryParse(value, out ffd)) this.FixForDate = ffd;
+                else this.FixForDate = DateTime.MaxValue;
             }
         }
         public String Project { get; set; }

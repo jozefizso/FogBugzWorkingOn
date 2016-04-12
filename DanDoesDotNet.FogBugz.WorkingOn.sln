@@ -1,6 +1,8 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DanDoesDotNet.FogBugz.WorkingOn", "DanDoesDotNet.FogBugz.WorkingOn.csproj", "{81DCAA9A-94B9-4579-A6B4-403F0071AB61}"
 EndProject
 Global

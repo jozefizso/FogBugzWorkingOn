@@ -120,7 +120,7 @@ namespace GratisInc.Tools.FogBugz.WorkingOn
 
             if (!String.IsNullOrEmpty(commandScript))
             {
-                XDocument doc = LoadDoc(String.Format("{0}{1}cmd=logon&email={2}&password={3}", serverUrl, commandScript, tbUser.Text, tbPassword.Text));
+                XDocument doc = LoadDoc(String.Format("{0}{1}cmd=logon&email={2}&password={3}", serverUrl, commandScript, Uri.EscapeDataString(tbUser.Text), Uri.EscapeDataString(tbPassword.Text)));
                 XDocumentDescendantsResult result;
                 if (doc.TryGetDescendants("token", out result))
                 {
